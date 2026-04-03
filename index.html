@@ -3,67 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>赛博公墓-深夜暗调版</title>
+    <title>赛博公墓-高精度版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 背景：极暗灰蓝色，接近黑色但带有一丝冷调 */
-        body { background-color: #0d1117; color: #aaa; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
+        /* 背景：极暗低饱和灰蓝 */
+        body { background-color: #0d1117; color: #555; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
         
-        /* 首页公墓 */
         #cemetery-view { display: block; padding: 15px; text-align: center; height: 100vh; overflow-y: auto; }
         .grave-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
         .grave-card { background: rgba(255,255,255,0.02); border: 1px solid #1c2128; padding: 8px; border-radius: 4px; }
-        .grave-card img { width: 100%; height: 110px; object-fit: cover; filter: grayscale(100%); opacity: 0.8; }
+        .grave-card img { width: 100%; height: 110px; object-fit: cover; filter: grayscale(100%); opacity: 0.6; }
 
-        /* 灵堂内部 */
         #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 20px; height: 100vh; position: relative; }
         
-        /* 遗像区 */
-        .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 5px; }
+        .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 10px; }
         .user-photo { position: absolute; top: 15%; left: 15%; width: 70%; height: 60%; object-fit: cover; filter: grayscale(100%); z-index: 1; }
         .frame-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
-        /* 祭坛：缩短碟子和香炉的间距 */
-        .altar { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 100%; margin-top: 0px; }
+        /* 祭坛区域 */
+        .altar { display: flex; align-items: flex-end; justify-content: center; width: 100%; margin-top: 10px; }
         
-        /* 碟子：下移并紧贴香炉 */
+        /* 碟子：使用 top 属性向下移动 */
         .plate-container { 
-            width: 75px; height: 75px; 
+            width: 90px; height: 90px; 
             background: url('https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/1775240868115.png') no-repeat center;
             background-size: contain;
             display: flex; align-items: center; justify-content: center; 
-            font-size: 26px; 
-            margin-bottom: -18px; 
-            z-index: 11;
+            font-size: 30px; 
+            position: relative;
+            top: 15px; /* 这里数值越大，碟子越靠下 */
+            z-index: 15;
         }
+        /* 左右碟子继续拉近 */
+        #plate-l { left: 50px; }
+        #plate-r { right: 50px; }
         
-        /* 香炉：保持巨大 */
-        .censer-container { position: relative; width: 180px; height: 140px; display: flex; justify-content: center; z-index: 10; }
+        /* Emoji 位置：配合碟子下移，略微往上拔高一点 */
+        .plate-content { transform: translateY(-25px); pointer-events: none; }
+        
+        /* 香炉：保持大尺寸 */
+        .censer-container { position: relative; width: 200px; height: 140px; display: flex; justify-content: center; z-index: 10; }
         #censer-base { position: absolute; bottom: 0; width: 100%; height: auto; z-index: 10; }
-        #lit-incense-img { position: absolute; bottom: 5px; width: 80%; height: auto; z-index: 12; display: none; pointer-events: none; }
+        #lit-incense-img { 
+            position: absolute; 
+            bottom: -15px; 
+            width: 100%; 
+            height: auto; 
+            z-index: 12; 
+            display: none; 
+            pointer-events: none; 
+        }
 
         /* 底部物品栏 */
-        .inventory { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.4); padding: 8px 0; display: flex; justify-content: center; align-items: center; gap: 15px; border-top: 1px solid #1c2128; z-index: 100; }
+        .inventory { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.4); padding: 10px 0; display: flex; justify-content: center; align-items: center; gap: 20px; border-top: 1px solid #1c2128; z-index: 100; }
         .incense-stick { width: 80px; height: 80px; object-fit: contain; cursor: grab; }
-        .emoji-item { font-size: 32px; cursor: grab; padding: 5px; }
+        .emoji-item { font-size: 35px; cursor: grab; padding: 5px; }
 
-        /* 拖拽虚影 */
-        .dragging-ghost { position: fixed; pointer-events: none; z-index: 999; width: 90px; height: 90px; font-size: 35px; opacity: 0.7; transform: translate(-50%, -50%); }
+        .dragging-ghost { position: fixed; pointer-events: none; z-index: 999; width: 100px; height: 100px; font-size: 45px; opacity: 0.7; transform: translate(-50%, -50%); }
 
-        .btn { padding: 6px 12px; background: #1c2128; color: #666; border: 1px solid #2d333b; border-radius: 4px; font-size: 13px; }
+        .btn { padding: 6px 12px; background: #1c2128; color: #444; border: 1px solid #2d333b; border-radius: 4px; font-size: 13px; }
     </style>
 </head>
 <body>
 
     <div id="cemetery-view">
-        <h1 style="font-size: 22px; color: #444; letter-spacing: 2px;">🪦 赛博公墓</h1>
-        <div id="grave-list" class="grave-grid">...正在感应亡魂...</div>
-        <button class="btn" onclick="startUpload()" style="margin-top:20px; background:#400; color:#999; border:none;">安葬新角色</button>
+        <h1 style="font-size: 22px; color: #2d333b;">🪦 赛博公墓</h1>
+        <div id="grave-list" class="grave-grid">...</div>
+        <button class="btn" onclick="startUpload()" style="margin-top:20px; background:#300; color:#555; border:none;">安葬新角色</button>
     </div>
 
     <div id="hall-view">
         <button class="btn" style="position:fixed; top:10px; left:10px;" onclick="location.reload()">返回</button>
-        <h2 id="display-name" style="margin:2px 0; font-size: 18px; color: #444;">灵位</h2>
+        <h2 id="display-name" style="margin:2px 0; font-size: 18px; color: #2d333b;">灵位</h2>
         
         <div class="photo-area">
             <img id="hall-user-img" class="user-photo" src="">
@@ -71,14 +82,16 @@
         </div>
 
         <div class="altar">
-            <div class="plate-container drop-zone" data-type="plate"></div>
-            
+            <div id="plate-l" class="plate-container drop-zone" data-type="plate">
+                <span class="plate-content"></span>
+            </div>
             <div class="censer-container drop-zone" data-type="censer">
                 <img id="censer-base" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1549.PNG">
                 <img id="lit-incense-img" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1551.PNG">
             </div>
-            
-            <div class="plate-container drop-zone" data-type="plate"></div>
+            <div id="plate-r" class="plate-container drop-zone" data-type="plate">
+                <span class="plate-content"></span>
+            </div>
         </div>
 
         <div class="inventory" style="padding-bottom: 20px;">
@@ -101,7 +114,7 @@
             list.innerHTML = (data || []).map(g => `
                 <div class="grave-card" onclick="openHall('${g.name}', '${g.photo_url}')">
                     <img src="${g.photo_url}">
-                    <div style="font-size: 13px; margin-top:4px; color:#444;">${g.name}</div>
+                    <div style="font-size: 13px; margin-top:4px; color:#2d333b;">${g.name}</div>
                 </div>
             `).join('');
         }
@@ -112,7 +125,7 @@
             document.getElementById('display-name').innerText = name;
             document.getElementById('hall-user-img').src = url;
             document.getElementById('lit-incense-img').style.display = 'none';
-            document.querySelectorAll('.plate-container').forEach(p => p.innerText = "");
+            document.querySelectorAll('.plate-content').forEach(p => p.innerText = "");
         }
 
         let currentGhost = null;
@@ -143,7 +156,7 @@
                 if (zoneType === 'censer' && dragInfo.kind === 'incense') {
                     document.getElementById('lit-incense-img').style.display = 'block';
                 } else if (zoneType === 'plate' && dragInfo.kind === 'emoji') {
-                    dropTarget.innerText = dragInfo.content;
+                    dropTarget.querySelector('.plate-content').innerText = dragInfo.content;
                 }
             }
             if (currentGhost && currentGhost.parentNode) document.body.removeChild(currentGhost);
@@ -164,8 +177,7 @@
             f.onchange = async () => {
                 const file = f.files[0];
                 const path = `${Date.now()}_${file.name}`;
-                const { error: upErr } = await client.storage.from('photos').upload(path, file);
-                if(upErr) { alert("上传失败！可能是Storage Policy没设对"); return; }
+                await client.storage.from('photos').upload(path, file);
                 const { data } = client.storage.from('photos').getPublicUrl(path);
                 await client.from('graves').insert([{ name: n, photo_url: data.publicUrl }]);
                 alert("已入土安葬");
