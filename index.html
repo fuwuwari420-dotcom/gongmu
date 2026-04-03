@@ -3,95 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>赛博公墓 - 永恒怀念</title>
-    <!-- 引入外部工具：数据库连接器 -->
+    <title>赛博互动公墓</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 界面美化 */
-        body { background: #000; color: #ccc; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow-x: hidden; }
+        body { background: #000; color: #ccc; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
         
-        /* 视图1：首页公墓 */
-        #cemetery-view { display: block; padding: 20px; text-align: center; }
-        .grave-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
-        .grave-card { background: #111; border: 1px solid #333; border-radius: 4px; padding: 10px; cursor: pointer; }
-        .grave-card img { width: 100%; height: 140px; object-fit: cover; filter: grayscale(100%); }
+        /* 公墓列表 */
+        #cemetery-view { display: block; padding: 20px; text-align: center; height: 100vh; overflow-y: auto; }
+        .grave-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .grave-card { background: #111; border: 1px solid #333; padding: 10px; border-radius: 5px; }
+        .grave-card img { width: 100%; height: 120px; object-fit: cover; filter: grayscale(100%); }
 
-        /* 视图2：个人互动灵堂 */
-        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 30px; min-height: 100vh; }
+        /* 灵堂视图 */
+        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 40px; height: 100vh; position: relative; }
         
-        /* 遗像+框：两个图片重叠在一起 */
-        .photo-area { position: relative; width: 200px; height: 260px; }
+        /* 遗像区域 */
+        .photo-area { position: relative; width: 220px; height: 280px; }
         .user-photo { position: absolute; top: 15%; left: 15%; width: 70%; height: 60%; object-fit: cover; filter: grayscale(100%); z-index: 1; }
         .frame-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
-        /* 香炉和碟子布局 */
-        .altar-table { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 20px; }
-        .plate { width: 60px; height: 60px; font-size: 40px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #222; }
-        #censer-img { width: 120px; height: auto; transition: 0.3s; }
+        /* 祭坛布局 */
+        .altar { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 30px; }
+        .plate { width: 70px; height: 70px; border-bottom: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 40px; background: rgba(255,255,255,0.05); border-radius: 50%; }
+        #censer-img { width: 120px; height: auto; z-index: 5; }
 
-        /* 底部贡品栏 */
-        .inventory { position: fixed; bottom: 0; width: 100%; background: #111; padding: 15px 0; display: flex; justify-content: center; gap: 20px; border-top: 1px solid #333; }
-        .item { font-size: 30px; cursor: grab; }
-        .incense-stick { width: 40px; height: 40px; object-fit: contain; }
+        /* 底部物品栏 */
+        .inventory { position: fixed; bottom: 0; width: 100%; background: #111; padding: 20px 0; display: flex; justify-content: center; gap: 25px; border-top: 1px solid #333; z-index: 100; }
+        .item { font-size: 40px; touch-action: none; cursor: grab; }
+        .incense-stick { width: 50px; height: 50px; object-fit: contain; }
 
-        /* 按钮 */
-        .btn { padding: 8px 15px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; }
-        .add-btn { background: #a00; border: none; margin-top: 20px; }
+        /* 拖拽中的虚影 */
+        .dragging-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 999;
+            font-size: 50px;
+            opacity: 0.8;
+            transform: translate(-50%, -50%);
+        }
+
+        .btn { padding: 10px 20px; background: #222; color: #fff; border: 1px solid #444; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <!-- 视图1：大厅 -->
     <div id="cemetery-view">
         <h1>🪦 赛博公墓</h1>
-        <div id="grave-list" class="grave-grid">正在召唤魂魄...</div>
-        <button class="btn add-btn" onclick="startUpload()">安葬新角色</button>
+        <div id="grave-list" class="grave-grid">加载亡魂中...</div>
+        <button class="btn" onclick="startUpload()" style="margin-top:40px; background:#800;">安葬新角色</button>
     </div>
 
-    <!-- 视图2：个人交互区 -->
     <div id="hall-view">
-        <button class="btn" style="position:fixed; top:10px; left:10px;" onclick="location.reload()">返回公墓</button>
-        <h2 id="display-name">之灵位</h2>
+        <button class="btn" style="position:fixed; top:10px; left:10px;" onclick="location.reload()">返回</button>
+        <h2 id="display-name">灵位</h2>
         
-        <!-- 遗像区域 -->
         <div class="photo-area">
             <img id="hall-user-img" class="user-photo" src="">
             <img class="frame-photo" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1548.PNG">
         </div>
 
-        <!-- 香炉和碟子 -->
-        <div class="altar-table">
-            <div class="plate" ondrop="dropToPlate(event)" ondragover="allow(event)">🥣</div>
-            <img id="censer-img" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1549.PNG" ondrop="dropIncense(event)" ondragover="allow(event)">
-            <div class="plate" ondrop="dropToPlate(event)" ondragover="allow(event)">🥣</div>
+        <div class="altar">
+            <div class="plate drop-zone" data-type="plate">💿</div>
+            <img id="censer-img" class="drop-zone" data-type="censer" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1549.PNG">
+            <div class="plate drop-zone" data-type="plate">🥣</div>
         </div>
 
-        <!-- 底部物品 -->
         <div class="inventory">
-            <!-- 未点燃的香 -->
-            <img id="unlit-incense" class="incense-stick" draggable="true" ondragstart="drag(event)" data-type="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">
-            <!-- 随机贡品 -->
-            <div class="item" draggable="true" ondragstart="drag(event)" data-type="emoji">🍎</div>
-            <div class="item" draggable="true" ondragstart="drag(event)" data-type="emoji">🍗</div>
-            <div class="item" draggable="true" ondragstart="drag(event)" data-type="emoji">🚬</div>
-            <div class="item" draggable="true" ondragstart="drag(event)" data-type="emoji">🍺</div>
+            <img class="drag-item incense-stick" data-kind="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">
+            <div class="drag-item item" data-kind="emoji">🍎</div>
+            <div class="drag-item item" data-kind="emoji">🍗</div>
+            <div class="drag-item item" data-kind="emoji">🚬</div>
+            <div class="drag-item item" data-kind="emoji">🍺</div>
         </div>
     </div>
 
     <script>
-        // 你的配置信息
         const SUPABASE_URL = 'https://xtplnnzudkqkkzntqtal.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_vrJ1yK1oe8wzdiDsrwIwXg_q4hW2527';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 1. 加载墓园列表
+        // 加载列表
         async function load() {
             const { data } = await client.from('graves').select('*').order('id', {ascending:false});
             const list = document.getElementById('grave-list');
-            if (!data || data.length === 0) {
-                list.innerHTML = "墓园空空如也";
-                return;
-            }
             list.innerHTML = data.map(g => `
                 <div class="grave-card" onclick="openHall('${g.name}', '${g.photo_url}')">
                     <img src="${g.photo_url}">
@@ -100,50 +94,79 @@
             `).join('');
         }
 
-        // 2. 进入个人灵堂
         function openHall(name, url) {
             document.getElementById('cemetery-view').style.display = 'none';
             document.getElementById('hall-view').style.display = 'flex';
-            document.getElementById('display-name').innerText = name + " 之灵位";
+            document.getElementById('display-name').innerText = name;
             document.getElementById('hall-user-img').src = url;
         }
 
-        // 3. 拖拽功能
-        function allow(ev) { ev.preventDefault(); }
-        function drag(ev) {
-            ev.dataTransfer.setData("type", ev.target.dataset.type);
-            ev.dataTransfer.setData("val", ev.target.innerText || "");
-        }
+        // --- 拖拽交互核心逻辑 (支持手机) ---
+        let currentGhost = null;
+        let dragInfo = null;
 
-        function dropIncense(ev) {
-            ev.preventDefault();
-            if (ev.dataTransfer.getData("type") === "incense") {
-                // 变成点燃的香（你的第四张图链接）
-                document.getElementById('censer-img').src = "https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1551.PNG";
+        document.addEventListener('touchstart', function(e) {
+            const el = e.target.closest('.drag-item');
+            if (!el) return;
+
+            dragInfo = {
+                kind: el.dataset.kind,
+                content: el.innerText || el.src
+            };
+
+            // 创建跟随手指的虚影
+            currentGhost = el.cloneNode(true);
+            currentGhost.classList.add('dragging-ghost');
+            document.body.appendChild(currentGhost);
+            moveGhost(e.touches[0]);
+        }, { passive: false });
+
+        document.addEventListener('touchmove', function(e) {
+            if (!currentGhost) return;
+            e.preventDefault(); // 禁止页面滚动
+            moveGhost(e.touches[0]);
+        }, { passive: false });
+
+        document.addEventListener('touchend', function(e) {
+            if (!currentGhost) return;
+
+            const touch = e.changedTouches[0];
+            // 获取手指松开位置下的元素
+            const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.drop-zone');
+
+            if (dropTarget) {
+                const zoneType = dropTarget.dataset.type;
+                if (zoneType === 'censer' && dragInfo.kind === 'incense') {
+                    dropTarget.src = "https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1551.PNG";
+                } else if (zoneType === 'plate' && dragInfo.kind === 'emoji') {
+                    dropTarget.innerText = dragInfo.content;
+                }
             }
+
+            document.body.removeChild(currentGhost);
+            currentGhost = null;
+            dragInfo = null;
+        });
+
+        function moveGhost(touch) {
+            currentGhost.style.left = touch.clientX + 'px';
+            currentGhost.style.top = touch.clientY + 'px';
         }
 
-        function dropToPlate(ev) {
-            ev.preventDefault();
-            if (ev.dataTransfer.getData("type") === "emoji") {
-                ev.target.innerText = ev.dataTransfer.getData("val");
-            }
-        }
-
-        // 4. 上传新灵位
+        // 上传功能
         async function startUpload() {
-            const n = prompt("受难者姓名：");
+            const n = prompt("输入死者姓名：");
             if (!n) return;
             const f = document.createElement('input');
-            f.type = 'file';
+            f.type = 'file'; f.accept = 'image/*';
             f.onchange = async () => {
                 const file = f.files[0];
                 const path = `${Date.now()}_${file.name}`;
                 await client.storage.from('photos').upload(path, file);
                 const { data } = client.storage.from('photos').getPublicUrl(path);
                 await client.from('graves').insert([{ name: n, photo_url: data.publicUrl }]);
-                alert("已入土安葬");
-                load();
+                alert("安葬成功！");
+                location.reload();
             };
             f.click();
         }
