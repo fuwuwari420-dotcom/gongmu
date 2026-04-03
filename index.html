@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>你要谁鼠啊打开这个网页</title>
+    <title>谁死我公墓里了</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* 1. 基础样式保持不变 */
@@ -67,7 +67,7 @@
     <audio id="bg-audio" loop src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/audio.m4s"></audio>
 
     <div id="rank-modal" onclick="this.style.display='none'">
-        <div style="color:#e1b12c; text-align:center; margin-bottom:20px; font-size:20px;">✨ 赛博功德榜 ✨</div>
+        <div style="color:#e1b12c; text-align:center; margin-bottom:20px; font-size:20px;">总之有个榜</div>
         <div class="rank-columns">
             <div><h4 style="color:#e1b12c">💰 财富榜</h4><div id="rank-wealth"></div></div>
             <div><h4 style="color:#e1b12c">🙇 功德榜</h4><div id="rank-merit"></div></div>
@@ -75,7 +75,7 @@
     </div>
 
     <div id="cemetery-view">
-        <div id="rank-entry" onclick="showRank()">🏆 查看排行</div>
+        <div id="rank-entry" onclick="showRank()">查看排行</div>
         <h1 style="font-size: 22px; color: #2d333b; margin-top: 50px;">🪦 赛博公墓</h1>
         <div id="grave-list" class="grave-grid">看看这里鼠了谁…</div>
         <button class="btn" onclick="startUpload()" style="margin-top:30px; background:#300; border:none; color:#555;">再埋一个</button>
@@ -116,7 +116,7 @@
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const ALL_GIFTS = ["🍎", "🍗", "🍕", "🚬", "🍺", "🍦", "🎮", "📱", "🌹", "🕯️", "🍱", "🍰", "🍵", "🥤", "🍔", "🍼", "🍌", "🥑", "🍄", "🎧", "🎬", "💸", "💊", "🥮", "🐶", "🥪", "🍤", "🧶", "🫐", "🍩", "🧸", "🎁", "💿", "👑", "🎂", "🍭"];
-        const DANMAKU_WORDS = ["然而为时已晚，xxx已经鼠了", "xxx不要鼠啊", "奖励自己一瓶啮齿动物爱喝的小饮料", "地面正以9.8m/s的速度上升", "哎我手腕上痒痒的好像有青色的虫子在爬 我去拿把刀挑了", "永远怀念深重悼念", "谢谢你我去极乐世界了"];
+        const DANMAKU_WORDS = ["可惜为时已晚，xxx已经鼠了", "xxx不要鼠啊", "蠢蠢的～死法～", "弹幕我编不出来了", "rip", "无意冒犯🙏🙏", "xxx你死的好惨啊", "奖励自己一瓶啮齿动物爱喝的小饮料", "🕯️🕯️🕯️", "地面正以9.8m/s的速度上升", "手腕上痒痒的好像有青色的虫子在爬 我去拿把刀挑了", "永远怀念深重悼念", "扣1复活xxx", "一个墨镜直接掐死", "我会想你的小xxx", "主人这个骨灰盒里好黑好小快放我出去喵", "飞过去一个凑数的应该也没人看得见吧", "谢谢你 我去极乐世界了"];
         
         // 气泡文案库
         const BUBBLE_WORDS = [
