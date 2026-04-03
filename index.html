@@ -3,54 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>赛博公墓-最终全能版</title>
+    <title>赛博公墓-祭坛校对版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 1. 基础样式 */
+        /* 背景样式完全还原 */
         body { background-color: #0d1117; color: #555; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
         
-        /* 2. 墓园视图 */
         #cemetery-view { display: block; padding: 15px; text-align: center; height: 100vh; overflow-y: auto; position: relative; }
         .grave-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 50px; }
         .grave-card { background: rgba(255,255,255,0.02); border: 1px solid #1c2128; padding: 8px; border-radius: 4px; position: relative; overflow: hidden; }
         .grave-card img { width: 100%; height: 110px; object-fit: cover; filter: grayscale(100%); opacity: 0.6; transition: all 0.3s; }
         
-        /* 长按变暗及挖坟按钮 */
         .grave-card.is-deleting img { filter: grayscale(100%) brightness(0.2); opacity: 0.8; }
         .unearth-btn { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); background: #a00; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; display: none; z-index: 100; }
         .grave-card.is-deleting .unearth-btn { display: block; }
 
-        /* 3. 灵堂视图 */
-        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 15px; height: 100vh; position: relative; }
-        .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 10px; overflow: hidden; }
-        .user-photo { position: absolute; top: 11%; left: 12%; width: 76%; height: 78%; object-fit: cover; filter: grayscale(100%); z-index: 1; }
+        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 20px; height: 100vh; position: relative; }
+        
+        /* 遗像区完全还原 */
+        .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 20px; overflow: hidden; }
+        .user-photo { position: absolute; top: 11%; left: 12%; width: 76%; height: 78%; object-fit: cover; object-position: center; filter: grayscale(100%); z-index: 1; }
         .frame-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
-        /* 4. 祭坛与操作 */
+        /* 祭坛布局完全还原 */
         .altar { display: flex; align-items: flex-end; justify-content: center; width: 100%; margin-top: -65px; z-index: 10; }
-        .plate-container { width: 90px; height: 90px; background: url('https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/1775240868115.png') no-repeat center/contain; display: flex; align-items: center; justify-content: center; font-size: 30px; position: relative; top: 25px; z-index: 15; }
+        .plate-container { 
+            width: 90px; height: 90px; 
+            background: url('https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/1775240868115.png') no-repeat center/contain;
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 30px; position: relative; top: 25px; z-index: 15;
+        }
         #plate-l { left: 60px; } #plate-r { right: 60px; }
+        .plate-content { transform: translateY(-5px); pointer-events: none; }
+        
         .censer-container { position: relative; width: 200px; height: 140px; display: flex; justify-content: center; z-index: 10; }
         #censer-base { position: absolute; bottom: 0; width: 100%; height: auto; z-index: 10; }
         #lit-incense-img { position: absolute; bottom: -50px; width: 100%; height: auto; z-index: 12; display: none; pointer-events: none; }
 
-        .action-zone { display: flex; gap: 20px; margin-top: 15px; z-index: 20; }
-        .action-btn { padding: 8px 15px; background: #1c2128; color: #666; border: 1px solid #2d333b; border-radius: 4px; font-size: 13px; }
+        .action-zone { display: flex; gap: 20px; margin-top: 10px; z-index: 20; }
+        .action-btn { padding: 8px 15px; background: #1c2128; color: #666; border: 1px solid #2d333b; border-radius: 4px; font-size: 13px; cursor: pointer; }
 
-        /* 5. 弹幕样式精调：颜色稍亮，速度稍快 */
-        .danmaku { position: absolute; white-space: nowrap; color: rgba(255, 255, 255, 0.6); font-size: 15px; pointer-events: none; z-index: 150; animation: dmMove 8s linear forwards; text-shadow: 1px 1px 2px #000; }
+        /* 弹幕样式 */
+        .danmaku { position: absolute; white-space: nowrap; color: rgba(255, 255, 255, 0.5); font-size: 15px; pointer-events: none; z-index: 20; text-shadow: 1px 1px 2px #000; animation: dmMove 10s linear forwards; }
         @keyframes dmMove { from { left: 110%; } to { left: -180%; } }
 
-        /* 6. 其他 UI */
+        /* 底部物品栏完全还原 */
+        .inventory { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.4); padding: 10px 0; display: flex; justify-content: center; align-items: center; gap: 20px; border-top: 1px solid #1c2128; z-index: 100; }
+        .incense-stick { width: 80px; height: 80px; object-fit: contain; cursor: grab; }
+        .emoji-item { font-size: 35px; cursor: grab; padding: 5px; }
+
+        /* 其他UI组件还原 */
         #rank-entry { position: fixed; top: 15px; left: 15px; z-index: 200; background: #1c2128; padding: 5px 10px; border: 1px solid #2d333b; border-radius: 4px; color: #888; font-size: 13px; }
         #rank-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; padding: 40px 20px; box-sizing: border-box; overflow-y: auto; }
         .rank-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .rank-item { display: flex; justify-content: space-between; border-bottom: 1px solid #222; margin-bottom: 5px; font-size: 12px; }
         .float-text { position: fixed; color: #e1b12c; font-weight: bold; pointer-events: none; z-index: 1000; animation: floatUp 0.8s ease-out forwards; font-size: 20px; }
-        @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
         #music-toggle { position: fixed; top: 10px; right: 10px; z-index: 200; width: 35px; height: 35px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #555; display: flex; align-items: center; justify-content: center; }
-        .inventory { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.4); padding: 10px 0; display: flex; justify-content: center; align-items: center; gap: 20px; border-top: 1px solid #1c2128; z-index: 100; }
-        .incense-stick { width: 80px; height: 80px; object-fit: contain; }
         .dragging-ghost { position: fixed; pointer-events: none; z-index: 999; width: 100px; height: 100px; font-size: 45px; opacity: 0.7; transform: translate(-50%, -50%); }
         .btn { padding: 6px 12px; background: #1c2128; color: #444; border: 1px solid #2d333b; border-radius: 4px; font-size: 13px; }
     </style>
@@ -71,7 +79,7 @@
         <div id="rank-entry" onclick="showRank()">🏆 查看排行</div>
         <h1 style="font-size: 22px; color: #2d333b; margin-top: 50px;">🪦 赛博公墓</h1>
         <div id="grave-list" class="grave-grid">...感应中...</div>
-        <button class="btn" onclick="startUpload()" style="margin-top:30px; background:#300; border:none; color:#555;">安葬新角色</button>
+        <button class="btn" onclick="startUpload()" style="margin-top:20px; background:#300; border:none; color:#555;">安葬新角色</button>
     </div>
 
     <div id="hall-view">
@@ -106,7 +114,7 @@
         const SUPABASE_KEY = 'sb_publishable_vrJ1yK1oe8wzdiDsrwIwXg_q4hW2527';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const ALL_GIFTS = ["🍎", "🍗", "🚬", "🍺", "🍦", "🎮", "📱", "🌹", "🕯️", "🍱", "🍰", "🍵", "🥤", "🍔", "🍕", "🍌", "🍑", "🍄", "🎧", "🎬", "💸", "💊", "🐱", "🐶", "🍭"];
+        const ALL_GIFTS = ["🍎", "🍗", "🚬", "🍺", "🍦", "🎮", "📱", "🌹", "🕯️", "🍱", "🍰", "🍵", "🥤", "🍔", "🍕", "🍌", "桃", "🍄", "🎧", "🎬", "💸", "💊", "🧶", "🐱", "🐶", "🍭"];
         const DANMAKU_WORDS = ["然而为时已晚，xxx已经鼠了", "xxx不要鼠啊", "奖励自己一瓶啮齿动物爱喝的小饮料", "地面正以9.8m/s的速度上升", "哎我手腕上痒痒的好像有青色的虫子在爬 我去拿把刀挑了", "永远怀念深重悼念", "谢谢你我去极乐世界了"];
         
         let currentGraveId = null;
@@ -124,7 +132,7 @@
             `).join('');
         }
 
-        // 长按删除
+        // 删除逻辑
         let tTimer = null;
         function hTouchS(e, id) { tTimer = setTimeout(() => { document.querySelectorAll('.grave-card').forEach(el => el.classList.remove('is-deleting')); document.getElementById(`card-${id}`).classList.add('is-deleting'); }, 800); }
         function hTouchE() { clearTimeout(tTimer); }
@@ -141,20 +149,18 @@
             } else { document.getElementById(`card-${id}`).classList.remove('is-deleting'); }
         }
 
-        // --- 弹幕逻辑精调 ---
+        // 弹幕核心修改：高度在遗像范围（80-230px），密度加大（1.8秒）
         function spawnDanmaku() {
             if (document.getElementById('hall-view').style.display !== 'flex') return;
             const name = document.getElementById('display-name').innerText.replace(" 之灵位", "");
             const el = document.createElement('div');
             el.className = 'danmaku';
             el.innerText = DANMAKU_WORDS[Math.floor(Math.random()*DANMAKU_WORDS.length)].replace(/xxx/g, name);
-            // 位置上移：40px 到 240px 随机（横跨标题和照片）
-            el.style.top = (Math.random() * 200 + 40) + "px";
+            el.style.top = (Math.random() * 150 + 80) + "px";
             document.getElementById('hall-view').appendChild(el);
-            setTimeout(() => el.remove(), 8000);
+            setTimeout(() => el.remove(), 10000);
         }
-        // 密度提高：1.2秒到1.8秒发射一次
-        setInterval(spawnDanmaku, 1200 + Math.random() * 600);
+        setInterval(spawnDanmaku, 1800);
 
         async function showRank() {
             document.getElementById('rank-modal').style.display = 'block';
