@@ -17,7 +17,25 @@
         #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 20px; height: 100vh; position: relative; }
         
         .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 20px; }
-        .user-photo { position: absolute; top: 15%; left: 15%; width: 70%; height: 60%; object-fit: cover; filter: grayscale(100%); z-index: 1; }
+.user-photo { 
+    position: absolute; 
+    /* 这四个百分比决定了照片在框里的位置和大小 */
+    /* 如果照片遮不住洞，就稍微调大一点 width 和 height，调小一点 top 和 left */
+    top: 12%;   
+    left: 12%;  
+    width: 76%; 
+    height: 66%; 
+
+    /* 【核心：防止空缺的关键】 */
+    /* cover 的意思是：自动裁剪图片，使其完全填满这个区域，不留任何缝隙 */
+    object-fit: cover; 
+    
+    /* 让照片居中裁剪，通常能保住人脸 */
+    object-position: center; 
+
+    filter: grayscale(100%); 
+    z-index: 1; 
+}
         .frame-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
         .altar { display: flex; align-items: flex-end; justify-content: center; width: 100%; margin-top: -65px; z-index: 10; }
