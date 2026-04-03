@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>赛博公墓 - 永恒怀念</title>
+    <!-- 引入外部工具：数据库连接器 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* 界面美化 */
+        body { background: #000; color: #ccc; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow-x: hidden; }
+        
+        /* 视图1：首页公墓 */
+        #cemetery-view { display: block; padding: 20px; text-align: center; }
+        .grave-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
+        .grave-card { background: #111; border: 1px solid #333; border-radius: 4px; padding: 10px; cursor: pointer; }
+        .grave-card img { width: 100%; height: 140px; object-fit: cover; filter: grayscale(100%); }
+
+        /* 视图2：个人互动灵堂 */
+        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 30px; min-height: 100vh; }
+        
+        /* 遗像+框：两个图片重叠在一起 */
+        .photo-area { position: relative; width: 200px; height: 260px; }
+        .user-photo { position: absolute; top: 15%; left: 15%; width: 70%; height: 60%; object-fit: cover; filter: grayscale(100%); z-index: 1; }
+        .frame-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+
+        /* 香炉和碟子布局 */
+        .altar-table { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 20px; }
+        .plate { width: 60px; height: 60px; font-size: 40px; display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #222; }
+        #censer-img { width: 120px; height: auto; transition: 0.3s; }
+
+        /* 底部贡品栏 */
+        .inventory { position: fixed; bottom: 0; width: 100%; background: #111; padding: 15px 0; display: flex; justify-content: center; gap: 20px; border-top: 1px solid #333; }
+        .item { font-size: 30px; cursor: grab; }
+        .incense-stick { width: 40px; height: 40px; object-fit: contain; }
+
+        /* 按钮 */
+        .btn { padding: 8px 15px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        .add-btn { background: #a00; border: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <!-- 视图1：大厅 -->
+    <div id="cemetery-view">
+        <h1>🪦 赛博公墓</h1>
+        <div id="grave-list" class="grave-grid">正在召唤魂魄...</div>
+        <button class="btn add-btn" onclick="startUpload()">安葬新角色</button>
+    </div>
+
+    <!-- 视图2：个人交互区 -->
+    <div id="hall-view">
+        <button class="btn" style="position:fixed; top:10px; left:10px;" onclick="location.reload()">返回公墓</button>
+        <h2 id="display-name">之灵位</h2>
+        
+        <!-- 遗像区域 -->
+        <div class="photo-area">
+            <img id="hall-user-img" class="user-photo" src="">
+            <img class="frame-photo" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1548.PNG">
+        </div>
+
+        <!-- 香炉和碟子 -->
+        <div class="altar-table">
+            <div class="plate" ondrop="dropToPlate(event)" ondragover="allow(event)">🥣</div>
+            <img id="censer-img" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1549.PNG" ondrop="dropIncense(event)" ondragover="allow(event)">
+            <div class="plate" ondrop="dropToPlate(event)" ondragover="allow(event)">🥣</div>
+        </div>
+
+        <!-- 底部物品 -->
+        <div class="inventory">
+            <!-- 未点燃的香 -->
+            <img id="unlit-incense" class="incense-stick" draggable="true" ondragstart="drag(event)" data-type="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">
+            <!-- 随机贡品 -->
+            <div class="item" draggable="true" ondragstart="drag(event)" data-type="emoji">🍎</div>
+            <div class="item" draggable="true" ondragstart="drag(event)" data-type="emoji">🍗</div>
+            <div class="item" draggable="true" ondragstart="drag(event)" data-type="emoji">🚬</div>
+            <div class="item" draggable="true" ondragstart="drag(event)" data-type="emoji">🍺</div>
+        </div>
+    </div>
+
+    <script>
+        // 你的配置信息
+        const SUPABASE_URL = 'https://xtplnnzudkqkkzntqtal.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_vrJ1yK1oe8wzdiDsrwIwXg_q4hW2527';
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 1. 加载墓园列表
+        async function load() {
+            const { data } = await client.from('graves').select('*').order('id', {ascending:false});
+            const list = document.getElementById('grave-list');
+            if (!data || data.length === 0) {
+                list.innerHTML = "墓园空空如也";
+                return;
+            }
+            list.innerHTML = data.map(g => `
+                <div class="grave-card" onclick="openHall('${g.name}', '${g.photo_url}')">
+                    <img src="${g.photo_url}">
+                    <div>${g.name}</div>
+                </div>
+            `).join('');
+        }
+
+        // 2. 进入个人灵堂
+        function openHall(name, url) {
+            document.getElementById('cemetery-view').style.display = 'none';
+            document.getElementById('hall-view').style.display = 'flex';
+            document.getElementById('display-name').innerText = name + " 之灵位";
+            document.getElementById('hall-user-img').src = url;
+        }
+
+        // 3. 拖拽功能
+        function allow(ev) { ev.preventDefault(); }
+        function drag(ev) {
+            ev.dataTransfer.setData("type", ev.target.dataset.type);
+            ev.dataTransfer.setData("val", ev.target.innerText || "");
+        }
+
+        function dropIncense(ev) {
+            ev.preventDefault();
+            if (ev.dataTransfer.getData("type") === "incense") {
+                // 变成点燃的香（你的第四张图链接）
+                document.getElementById('censer-img').src = "https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1551.PNG";
+            }
+        }
+
+        function dropToPlate(ev) {
+            ev.preventDefault();
+            if (ev.dataTransfer.getData("type") === "emoji") {
+                ev.target.innerText = ev.dataTransfer.getData("val");
+            }
+        }
+
+        // 4. 上传新灵位
+        async function startUpload() {
+            const n = prompt("受难者姓名：");
+            if (!n) return;
+            const f = document.createElement('input');
+            f.type = 'file';
+            f.onchange = async () => {
+                const file = f.files[0];
+                const path = `${Date.now()}_${file.name}`;
+                await client.storage.from('photos').upload(path, file);
+                const { data } = client.storage.from('photos').getPublicUrl(path);
+                await client.from('graves').insert([{ name: n, photo_url: data.publicUrl }]);
+                alert("已入土安葬");
+                load();
+            };
+            f.click();
+        }
+
+        window.onload = load;
+    </script>
+</body>
+</html>
