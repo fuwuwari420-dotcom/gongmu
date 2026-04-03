@@ -11,21 +11,37 @@
         /* 墓园视图 */
         #cemetery-view { display: block; padding: 15px; text-align: center; height: 100vh; overflow-y: auto; position: relative; }
         .grave-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 50px; }
-        .grave-card { background: rgba(255,255,255,0.02); border: 1px solid #1c2128; padding: 8px; border-radius: 4px; position: relative; }
-        .grave-card img { width: 100%; height: 110px; object-fit: cover; filter: grayscale(100%); opacity: 0.6; pointer-events: none; }
         
-        /* 删除按钮样式 */
-        .delete-tag { position: absolute; top: -10px; right: -10px; background: #a00; color: #fff; font-size: 10px; padding: 5px; border-radius: 50%; display: none; z-index: 50; }
+        .grave-card { 
+            background: rgba(255,255,255,0.02); border: 1px solid #1c2128; 
+            padding: 8px; border-radius: 4px; position: relative; overflow: hidden;
+        }
+        .grave-card img { 
+            width: 100%; height: 110px; object-fit: cover; 
+            filter: grayscale(100%); opacity: 0.6; transition: all 0.3s; 
+        }
+
+        /* --- 新增：长按变暗状态 --- */
+        .grave-card.is-deleting img { filter: grayscale(100%) brightness(0.2); opacity: 0.8; }
+        
+        /* --- 新增：挖坟按钮样式 --- */
+        .unearth-btn { 
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            background: #a00; color: #fff; border: none; padding: 6px 12px;
+            border-radius: 4px; font-size: 13px; font-weight: bold;
+            display: none; z-index: 100; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .grave-card.is-deleting .unearth-btn { display: block; }
 
         /* 排行榜入口 */
-        #rank-entry { position: fixed; top: 15px; left: 15px; z-index: 100; background: #1c2128; padding: 5px 10px; border-radius: 4px; border: 1px solid #2d333b; color: #888; font-size: 13px; }
+        #rank-entry { position: fixed; top: 15px; left: 15px; z-index: 200; background: #1c2128; padding: 5px 10px; border-radius: 4px; border: 1px solid #2d333b; color: #888; font-size: 13px; }
         
         /* 排行榜弹窗 */
         #rank-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; padding: 40px 20px; box-sizing: border-box; overflow-y: auto; }
         .rank-title { color: #e1b12c; text-align: center; margin-bottom: 20px; font-size: 20px; }
         .rank-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .rank-list { font-size: 12px; line-height: 2; }
-        .rank-item { display: flex; justify-content: space-between; border-bottom: 1px solid #222; }
+        .rank-item { display: flex; justify-content: space-between; border-bottom: 1px solid #222; margin-bottom: 5px; }
 
         /* 灵堂视图 */
         #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 15px; height: 100vh; position: relative; }
@@ -59,7 +75,6 @@
 
     <audio id="bg-audio" loop src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/audio.m4s"></audio>
 
-    <!-- 排行榜弹窗 -->
     <div id="rank-modal" onclick="this.style.display='none'">
         <div class="rank-title">✨ 赛博功德榜 ✨</div>
         <div class="rank-columns">
@@ -72,10 +87,9 @@
                 <div id="rank-merit" class="rank-list">加载中...</div>
             </div>
         </div>
-        <p style="text-align:center; color:#333; margin-top:30px;">(点击任意处关闭)</p>
+        <p style="text-align:center; color:#333; margin-top:30px; font-size:12px;">(点击任意处关闭)</p>
     </div>
 
-    <!-- 墓园视图 -->
     <div id="cemetery-view">
         <div id="rank-entry" onclick="showRank()">🏆 查看排行</div>
         <h1 style="font-size: 22px; color: #2d333b; margin-top: 50px;">🪦 赛博公墓</h1>
@@ -83,7 +97,6 @@
         <button class="btn" onclick="startUpload()" style="margin-top:30px; background:#300; border:none; color:#555;">安葬新角色</button>
     </div>
 
-    <!-- 灵堂视图 -->
     <div id="hall-view">
         <button class="btn" style="position:fixed; top:10px; left:10px;" onclick="location.reload()">返回</button>
         <h2 id="display-name" style="margin:5px 0; font-size: 18px; color: #2d333b;">之灵位</h2>
@@ -120,71 +133,85 @@
         let currentGraveId = null;
         const audio = document.getElementById('bg-audio');
 
-        // 1. 加载墓园并处理长按
         async function load() {
             const { data } = await client.from('graves').select('*').order('id', {ascending:false});
             const list = document.getElementById('grave-list');
             list.innerHTML = (data || []).map(g => `
-                <div class="grave-card" 
-                     ontouchstart="handleTouchStart(event, ${g.id}, '${g.name}')" 
+                <div class="grave-card" id="card-${g.id}" 
+                     ontouchstart="handleTouchStart(event, ${g.id})" 
                      ontouchend="handleTouchEnd(event)" 
-                     onclick="openHall(${g.id}, '${g.name}', '${g.photo_url}')">
-                    <div id="del-${g.id}" class="delete-tag" onclick="confirmDelete(event, ${g.id}, '${g.name}')">挖坟</div>
+                     onclick="handleCardClick(event, ${g.id}, '${g.name}', '${g.photo_url}')">
+                    <button class="unearth-btn" onclick="confirmDelete(event, ${g.id}, '${g.name}')">挖坟</button>
                     <img src="${g.photo_url}">
                     <div style="font-size: 12px; margin-top:4px; color:#2d333b;">${g.name} 之墓</div>
                 </div>
             `).join('');
         }
 
-        // --- 长按删除逻辑 ---
+        // --- 核心：长按变暗逻辑 ---
         let touchTimer = null;
-        function handleTouchStart(e, id, name) {
+        let isLongPress = false;
+
+        function handleTouchStart(e, id) {
+            isLongPress = false;
             touchTimer = setTimeout(() => {
-                document.getElementById(`del-${id}`).style.display = 'block';
-            }, 1000); // 1秒长按
+                isLongPress = true;
+                // 让所有卡片先恢复，然后让当前卡片变暗
+                document.querySelectorAll('.grave-card').forEach(el => el.classList.remove('is-deleting'));
+                document.getElementById(`card-${id}`).classList.add('is-deleting');
+            }, 800); // 0.8秒触发长按
         }
-        function handleTouchEnd() { clearTimeout(touchTimer); }
+
+        function handleTouchEnd(e) {
+            clearTimeout(touchTimer);
+        }
+
+        function handleCardClick(e, id, name, url) {
+            const card = document.getElementById(`card-${id}`);
+            // 如果正处于“准备删除”状态，点击卡片（非按钮）则取消状态
+            if (card.classList.contains('is-deleting')) {
+                if (e.target.className !== 'unearth-btn') {
+                    card.classList.remove('is-deleting');
+                }
+                return;
+            }
+            // 正常进入灵堂
+            openHall(id, name, url);
+        }
 
         async function confirmDelete(e, id, name) {
-            e.stopPropagation(); // 阻止进入灵堂
-            const code = prompt(`真的要挖坟吗？\n请输入：我确定要把${name}从坟里挖出来`);
+            e.stopPropagation(); // 阻止触发卡片的 handleCardClick
+            const code = prompt(`确定要挖坟吗？请输入：\n我确定要把${name}从坟里挖出来`);
             if (code === `我确定要把${name}从坟里挖出来`) {
                 await client.from('graves').delete().eq('id', id);
-                alert("已成功挖出（删除成功）");
+                alert("墓已清空");
                 location.reload();
             } else {
-                alert("口令不对，挖坟失败");
-                document.getElementById(`del-${id}`).style.display = 'none';
+                alert("口令错误，挖坟中止");
+                document.getElementById(`card-${id}`).classList.remove('is-deleting');
             }
         }
 
-        // 2. 排行榜
         async function showRank() {
             document.getElementById('rank-modal').style.display = 'block';
             const { data: wList } = await client.from('graves').select('name, wealth').order('wealth', {ascending:false}).limit(10);
             const { data: mList } = await client.from('graves').select('name, merit').order('merit', {ascending:false}).limit(10);
-            
             document.getElementById('rank-wealth').innerHTML = wList.map(i => `<div class="rank-item"><span>${i.name}</span><span>${i.wealth}</span></div>`).join('');
             document.getElementById('rank-merit').innerHTML = mList.map(i => `<div class="rank-item"><span>${i.name}</span><span>${i.merit}</span></div>`).join('');
         }
 
-        // 3. 互动累积
         async function triggerAction(btn, field, text) {
-            // 立即展示动画，不等待数据库
             const rect = btn.getBoundingClientRect();
             const el = document.createElement('div');
             el.className = 'float-text'; el.innerText = text;
             el.style.left = (rect.left + rect.width / 2) + 'px'; el.style.top = rect.top + 'px';
             document.body.appendChild(el);
             setTimeout(() => document.body.removeChild(el), 800);
-
             if (audio.paused) audio.play();
-
-            // 更新数据库：累加 1
-            // 注意：supabase 客户端没有直接的 increment，我们用简单的逻辑更新
+            
+            // 数据库更新
             const { data } = await client.from('graves').select(field).eq('id', currentGraveId).single();
-            const newVal = (data[field] || 0) + 1;
-            await client.from('graves').update({ [field]: newVal }).eq('id', currentGraveId);
+            await client.from('graves').update({ [field]: (data[field] || 0) + 1 }).eq('id', currentGraveId);
         }
 
         function openHall(id, name, url) {
@@ -195,19 +222,19 @@
             document.getElementById('hall-user-img').src = url;
             document.getElementById('lit-incense-img').style.display = 'none';
             audio.play().catch(()=>{});
-
             const bar = document.getElementById('inventory-bar');
             const randomGifts = [...ALL_GIFTS].sort(() => 0.5 - Math.random()).slice(0, 4);
             bar.innerHTML = `<img class="drag-item incense-stick" data-kind="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">${randomGifts.map(emoji => `<div class="drag-item emoji-item" data-kind="emoji">${emoji}</div>`).join('')}`;
         }
 
-        // --- 拖拽逻辑 ---
+        // 触控拖拽
         let currentGhost = null; let dragInfo = null;
         document.addEventListener('touchstart', (e) => {
             const el = e.target.closest('.drag-item'); if (!el) return;
             dragInfo = { kind: el.dataset.kind, content: el.innerText || el.src };
             currentGhost = el.cloneNode(true); currentGhost.classList.add('dragging-ghost');
             document.body.appendChild(currentGhost);
+            currentGhost.style.left = e.touches[0].clientX + 'px'; currentGhost.style.top = e.touches[0].clientY + 'px';
         });
         document.addEventListener('touchmove', (e) => {
             if (!currentGhost) return; e.preventDefault();
