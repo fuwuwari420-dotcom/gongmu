@@ -3,80 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>赛博公墓-最终全功能版</title>
+    <title>赛博公墓-功德无量版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 1. 全局风格 */
         body { background-color: #0d1117; color: #555; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
         
-        /* 2. 墓园列表：显示 XX 之墓 */
-        #cemetery-view { display: block; padding: 15px; text-align: center; height: 100vh; overflow-y: auto; }
-        .grave-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
-        .grave-card { background: rgba(255,255,255,0.02); border: 1px solid #1c2128; padding: 8px; border-radius: 4px; }
-        .grave-card img { width: 100%; height: 110px; object-fit: cover; filter: grayscale(100%); opacity: 0.6; }
-
-        /* 3. 灵堂交互：显示 XX 之灵位 */
-        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 20px; height: 100vh; position: relative; }
+        /* 墓园视图 */
+        #cemetery-view { display: block; padding: 15px; text-align: center; height: 100vh; overflow-y: auto; position: relative; }
+        .grave-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 50px; }
+        .grave-card { background: rgba(255,255,255,0.02); border: 1px solid #1c2128; padding: 8px; border-radius: 4px; position: relative; }
+        .grave-card img { width: 100%; height: 110px; object-fit: cover; filter: grayscale(100%); opacity: 0.6; pointer-events: none; }
         
-        /* 遗像区：完美适配 */
-        .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 20px; overflow: hidden; }
-        .user-photo { position: absolute; top: 11%; left: 12%; width: 76%; height: 78%; object-fit: cover; object-position: center; filter: grayscale(100%); z-index: 1; }
+        /* 删除按钮样式 */
+        .delete-tag { position: absolute; top: -10px; right: -10px; background: #a00; color: #fff; font-size: 10px; padding: 5px; border-radius: 50%; display: none; z-index: 50; }
+
+        /* 排行榜入口 */
+        #rank-entry { position: fixed; top: 15px; left: 15px; z-index: 100; background: #1c2128; padding: 5px 10px; border-radius: 4px; border: 1px solid #2d333b; color: #888; font-size: 13px; }
+        
+        /* 排行榜弹窗 */
+        #rank-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; padding: 40px 20px; box-sizing: border-box; overflow-y: auto; }
+        .rank-title { color: #e1b12c; text-align: center; margin-bottom: 20px; font-size: 20px; }
+        .rank-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .rank-list { font-size: 12px; line-height: 2; }
+        .rank-item { display: flex; justify-content: space-between; border-bottom: 1px solid #222; }
+
+        /* 灵堂视图 */
+        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 15px; height: 100vh; position: relative; }
+        .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 10px; overflow: hidden; }
+        .user-photo { position: absolute; top: 11%; left: 12%; width: 76%; height: 78%; object-fit: cover; filter: grayscale(100%); z-index: 1; }
         .frame-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
-        /* 祭坛布局校对 */
+        /* 祭坛布局 */
         .altar { display: flex; align-items: flex-end; justify-content: center; width: 100%; margin-top: -65px; z-index: 10; }
-        .plate-container { 
-            width: 90px; height: 90px; 
-            background: url('https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/1775240868115.png') no-repeat center;
-            background-size: contain; display: flex; align-items: center; justify-content: center; 
-            font-size: 30px; position: relative; top: 25px; z-index: 15;
-        }
-        #plate-l { left: 60px; } 
-        #plate-r { right: 60px; }
-        .plate-content { transform: translateY(-5px); pointer-events: none; }
-        
+        .plate-container { width: 90px; height: 90px; background: url('https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/1775240868115.png') no-repeat center/contain; display: flex; align-items: center; justify-content: center; font-size: 30px; position: relative; top: 25px; z-index: 15; }
+        #plate-l { left: 60px; } #plate-r { right: 60px; }
         .censer-container { position: relative; width: 200px; height: 140px; display: flex; justify-content: center; z-index: 10; }
         #censer-base { position: absolute; bottom: 0; width: 100%; height: auto; z-index: 10; }
         #lit-incense-img { position: absolute; bottom: -50px; width: 100%; height: auto; z-index: 12; display: none; pointer-events: none; }
 
-        /* 烧纸/磕头按钮 */
-        .action-zone { display: flex; gap: 20px; margin-top: 10px; z-index: 20; }
-        .action-btn { padding: 8px 15px; background: #1c2128; color: #666; border: 1px solid #2d333b; border-radius: 4px; font-size: 13px; cursor: pointer; transition: transform 0.1s; }
-        .action-btn:active { transform: scale(0.9); background: #2d333b; color: #fff; }
+        .action-zone { display: flex; gap: 20px; margin-top: 15px; z-index: 20; }
+        .action-btn { padding: 8px 15px; background: #1c2128; color: #666; border: 1px solid #2d333b; border-radius: 4px; font-size: 13px; }
+        .action-btn:active { transform: scale(0.9); }
 
-        /* 浮动文字 */
         .float-text { position: fixed; color: #e1b12c; font-weight: bold; pointer-events: none; z-index: 1000; animation: floatUp 0.8s ease-out forwards; font-size: 20px; }
         @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
 
-        /* 音乐开关 */
-        #music-toggle { position: fixed; top: 10px; right: 10px; z-index: 200; width: 35px; height: 35px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid #333; color: #555; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-
-        /* 物品栏 */
         .inventory { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.4); padding: 10px 0; display: flex; justify-content: center; align-items: center; gap: 20px; border-top: 1px solid #1c2128; z-index: 100; }
-        .incense-stick { width: 80px; height: 80px; object-fit: contain; cursor: grab; }
-        .emoji-item { font-size: 35px; cursor: grab; padding: 5px; }
+        .incense-stick { width: 80px; height: 80px; object-fit: contain; }
+        .emoji-item { font-size: 35px; padding: 5px; }
 
-        .dragging-ghost { position: fixed; pointer-events: none; z-index: 999; width: 100px; height: 100px; font-size: 45px; opacity: 0.7; transform: translate(-50%, -50%); }
         .btn { padding: 6px 12px; background: #1c2128; color: #444; border: 1px solid #2d333b; border-radius: 4px; font-size: 13px; }
     </style>
 </head>
 <body>
 
-    <!-- 音乐文件 (Loop 循环) -->
     <audio id="bg-audio" loop src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/audio.m4s"></audio>
+
+    <!-- 排行榜弹窗 -->
+    <div id="rank-modal" onclick="this.style.display='none'">
+        <div class="rank-title">✨ 赛博功德榜 ✨</div>
+        <div class="rank-columns">
+            <div>
+                <h4 style="color:#e1b12c">💰 财富榜</h4>
+                <div id="rank-wealth" class="rank-list">加载中...</div>
+            </div>
+            <div>
+                <h4 style="color:#e1b12c">🙇 功德榜</h4>
+                <div id="rank-merit" class="rank-list">加载中...</div>
+            </div>
+        </div>
+        <p style="text-align:center; color:#333; margin-top:30px;">(点击任意处关闭)</p>
+    </div>
 
     <!-- 墓园视图 -->
     <div id="cemetery-view">
-        <h1 style="font-size: 22px; color: #2d333b; margin-top: 20px;">🪦 赛博公墓</h1>
+        <div id="rank-entry" onclick="showRank()">🏆 查看排行</div>
+        <h1 style="font-size: 22px; color: #2d333b; margin-top: 50px;">🪦 赛博公墓</h1>
         <div id="grave-list" class="grave-grid">...感应中...</div>
-        <button class="btn" onclick="startUpload()" style="margin-top:20px; background:#300; color:#555; border:none;">安葬新角色</button>
+        <button class="btn" onclick="startUpload()" style="margin-top:30px; background:#300; border:none; color:#555;">安葬新角色</button>
     </div>
 
     <!-- 灵堂视图 -->
     <div id="hall-view">
         <button class="btn" style="position:fixed; top:10px; left:10px;" onclick="location.reload()">返回</button>
-        <div id="music-toggle" onclick="toggleMusic()">🔇</div>
-
         <h2 id="display-name" style="margin:5px 0; font-size: 18px; color: #2d333b;">之灵位</h2>
         
         <div class="photo-area">
@@ -94,113 +103,126 @@
         </div>
 
         <div class="action-zone">
-            <div class="action-btn" onclick="triggerAction(this, '财富+1')">🔥 烧纸钱</div>
-            <div class="action-btn" onclick="triggerAction(this, '功德+1')">🙇 磕响头</div>
+            <div class="action-btn" onclick="triggerAction(this, 'wealth', '财富+1')">🔥 烧纸钱</div>
+            <div class="action-btn" onclick="triggerAction(this, 'merit', '功德+1')">🙇 磕响头</div>
         </div>
 
-        <!-- 动态刷新的贡品栏 -->
         <div class="inventory" id="inventory-bar" style="padding-bottom: 25px;"></div>
     </div>
 
     <script>
-        // 配置
         const SUPABASE_URL = 'https://xtplnnzudkqkkzntqtal.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_vrJ1yK1oe8wzdiDsrwIwXg_q4hW2527';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const ALL_GIFTS = ["🍎", "🍗", "🚬", "🍺", "🍦", "🎮", "📱", "🌹", "🕯️", "🍱", "🍰", "🍵", "🥤", "🍔", "🍕", "🍌", "🍑", "🍄", "🎧", "🎬", "💸", "💊", "🐱", "🐶", "🍭", "⚽"];
-
-        // 音乐组件
+        const ALL_GIFTS = ["🍎", "🍗", "🚬", "🍺", "🍦", "🎮", "📱", "🌹", "🕯️", "🍱", "🍰", "🍵", "🥤", "🍔", "🍕", "🍌", "🍑", "🍄", "🎧", "🎬", "💸", "💊", "🐱", "🐶", "🍭"];
+        
+        let currentGraveId = null;
         const audio = document.getElementById('bg-audio');
-        const mBtn = document.getElementById('music-toggle');
 
-        function toggleMusic() {
-            if (audio.paused) {
-                audio.play(); mBtn.innerText = "🎵"; mBtn.style.color = "#e1b12c";
-            } else {
-                audio.pause(); mBtn.innerText = "🔇"; mBtn.style.color = "#555";
-            }
-        }
-
+        // 1. 加载墓园并处理长按
         async function load() {
             const { data } = await client.from('graves').select('*').order('id', {ascending:false});
             const list = document.getElementById('grave-list');
-            // 列表显示：XX之墓
             list.innerHTML = (data || []).map(g => `
-                <div class="grave-card" onclick="openHall('${g.name}', '${g.photo_url}')">
+                <div class="grave-card" 
+                     ontouchstart="handleTouchStart(event, ${g.id}, '${g.name}')" 
+                     ontouchend="handleTouchEnd(event)" 
+                     onclick="openHall(${g.id}, '${g.name}', '${g.photo_url}')">
+                    <div id="del-${g.id}" class="delete-tag" onclick="confirmDelete(event, ${g.id}, '${g.name}')">挖坟</div>
                     <img src="${g.photo_url}">
-                    <div style="font-size: 13px; margin-top:4px; color:#2d333b;">${g.name} 之墓</div>
+                    <div style="font-size: 12px; margin-top:4px; color:#2d333b;">${g.name} 之墓</div>
                 </div>
             `).join('');
         }
 
-        // --- 进入灵堂并尝试播放音乐 ---
-        function openHall(name, url) {
-            document.getElementById('cemetery-view').style.display = 'none';
-            document.getElementById('hall-view').style.display = 'flex';
-            // 标题显示：XX之灵位
-            document.getElementById('display-name').innerText = name + " 之灵位";
-            document.getElementById('hall-user-img').src = url;
-            document.getElementById('lit-incense-img').style.display = 'none';
-            document.querySelectorAll('.plate-content').forEach(p => p.innerText = "");
+        // --- 长按删除逻辑 ---
+        let touchTimer = null;
+        function handleTouchStart(e, id, name) {
+            touchTimer = setTimeout(() => {
+                document.getElementById(`del-${id}`).style.display = 'block';
+            }, 1000); // 1秒长按
+        }
+        function handleTouchEnd() { clearTimeout(touchTimer); }
 
-            // 尝试触发自动播放
-            audio.play().then(() => {
-                mBtn.innerText = "🎵"; mBtn.style.color = "#e1b12c";
-            }).catch(() => {
-                console.log("需要用户交互解锁音频");
-            });
-
-            // 随机刷新贡品栏
-            const bar = document.getElementById('inventory-bar');
-            const randomGifts = [...ALL_GIFTS].sort(() => 0.5 - Math.random()).slice(0, 4);
-            bar.innerHTML = `
-                <img class="drag-item incense-stick" data-kind="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">
-                ${randomGifts.map(emoji => `<div class="drag-item emoji-item" data-kind="emoji">${emoji}</div>`).join('')}
-            `;
+        async function confirmDelete(e, id, name) {
+            e.stopPropagation(); // 阻止进入灵堂
+            const code = prompt(`真的要挖坟吗？\n请输入：我确定要把${name}从坟里挖出来`);
+            if (code === `我确定要把${name}从坟里挖出来`) {
+                await client.from('graves').delete().eq('id', id);
+                alert("已成功挖出（删除成功）");
+                location.reload();
+            } else {
+                alert("口令不对，挖坟失败");
+                document.getElementById(`del-${id}`).style.display = 'none';
+            }
         }
 
-        function triggerAction(btn, text) {
+        // 2. 排行榜
+        async function showRank() {
+            document.getElementById('rank-modal').style.display = 'block';
+            const { data: wList } = await client.from('graves').select('name, wealth').order('wealth', {ascending:false}).limit(10);
+            const { data: mList } = await client.from('graves').select('name, merit').order('merit', {ascending:false}).limit(10);
+            
+            document.getElementById('rank-wealth').innerHTML = wList.map(i => `<div class="rank-item"><span>${i.name}</span><span>${i.wealth}</span></div>`).join('');
+            document.getElementById('rank-merit').innerHTML = mList.map(i => `<div class="rank-item"><span>${i.name}</span><span>${i.merit}</span></div>`).join('');
+        }
+
+        // 3. 互动累积
+        async function triggerAction(btn, field, text) {
+            // 立即展示动画，不等待数据库
             const rect = btn.getBoundingClientRect();
             const el = document.createElement('div');
             el.className = 'float-text'; el.innerText = text;
-            el.style.left = (rect.left + rect.width/2) + 'px'; el.style.top = rect.top + 'px';
-            const randomX = (Math.random() - 0.5) * 60;
-            el.style.marginLeft = randomX + 'px';
+            el.style.left = (rect.left + rect.width / 2) + 'px'; el.style.top = rect.top + 'px';
             document.body.appendChild(el);
-            setTimeout(() => { document.body.removeChild(el); }, 800);
-            
-            // 点击按钮时作为后备播放
-            if (audio.paused) { audio.play().then(() => { mBtn.innerText = "🎵"; mBtn.style.color = "#e1b12c"; }).catch(()=>{}); }
+            setTimeout(() => document.body.removeChild(el), 800);
+
+            if (audio.paused) audio.play();
+
+            // 更新数据库：累加 1
+            // 注意：supabase 客户端没有直接的 increment，我们用简单的逻辑更新
+            const { data } = await client.from('graves').select(field).eq('id', currentGraveId).single();
+            const newVal = (data[field] || 0) + 1;
+            await client.from('graves').update({ [field]: newVal }).eq('id', currentGraveId);
         }
 
-        // 触控拖拽逻辑
+        function openHall(id, name, url) {
+            currentGraveId = id;
+            document.getElementById('cemetery-view').style.display = 'none';
+            document.getElementById('hall-view').style.display = 'flex';
+            document.getElementById('display-name').innerText = name + " 之灵位";
+            document.getElementById('hall-user-img').src = url;
+            document.getElementById('lit-incense-img').style.display = 'none';
+            audio.play().catch(()=>{});
+
+            const bar = document.getElementById('inventory-bar');
+            const randomGifts = [...ALL_GIFTS].sort(() => 0.5 - Math.random()).slice(0, 4);
+            bar.innerHTML = `<img class="drag-item incense-stick" data-kind="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">${randomGifts.map(emoji => `<div class="drag-item emoji-item" data-kind="emoji">${emoji}</div>`).join('')}`;
+        }
+
+        // --- 拖拽逻辑 ---
         let currentGhost = null; let dragInfo = null;
-        document.addEventListener('touchstart', function(e) {
+        document.addEventListener('touchstart', (e) => {
             const el = e.target.closest('.drag-item'); if (!el) return;
             dragInfo = { kind: el.dataset.kind, content: el.innerText || el.src };
             currentGhost = el.cloneNode(true); currentGhost.classList.add('dragging-ghost');
-            document.body.appendChild(currentGhost); moveGhost(e.touches[0]);
+            document.body.appendChild(currentGhost);
+        });
+        document.addEventListener('touchmove', (e) => {
+            if (!currentGhost) return; e.preventDefault();
+            currentGhost.style.left = e.touches[0].clientX + 'px'; currentGhost.style.top = e.touches[0].clientY + 'px';
         }, { passive: false });
-        
-        document.addEventListener('touchmove', function(e) { if (!currentGhost) return; e.preventDefault(); moveGhost(e.touches[0]); }, { passive: false });
-        
-        document.addEventListener('touchend', function(e) {
+        document.addEventListener('touchend', (e) => {
             if (!currentGhost) return;
             const touch = e.changedTouches[0];
-            const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.drop-zone');
-            if (dropTarget) {
-                if (dropTarget.dataset.type === 'censer' && dragInfo.kind === 'incense') {
-                    document.getElementById('lit-incense-img').style.display = 'block';
-                } else if (dropTarget.dataset.type === 'plate' && dragInfo.kind === 'emoji') {
-                    dropTarget.querySelector('.plate-content').innerText = dragInfo.content;
-                }
+            const target = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.drop-zone');
+            if (target) {
+                if (target.dataset.type === 'censer' && dragInfo.kind === 'incense') document.getElementById('lit-incense-img').style.display = 'block';
+                else if (target.dataset.type === 'plate' && dragInfo.kind === 'emoji') target.querySelector('span').innerText = dragInfo.content;
             }
-            if (currentGhost && currentGhost.parentNode) document.body.removeChild(currentGhost);
-            currentGhost = null; dragInfo = null;
+            document.body.removeChild(currentGhost); currentGhost = null;
         });
-
-        function moveGhost(touch) { currentGhost.style.left = touch.clientX + 'px'; currentGhost.style.top = touch.clientY + 'px'; }
 
         async function startUpload() {
             const n = prompt("安葬者姓名："); if (!n) return;
@@ -209,8 +231,8 @@
                 const file = f.files[0]; const path = `${Date.now()}_${file.name}`;
                 await client.storage.from('photos').upload(path, file);
                 const { data } = client.storage.from('photos').getPublicUrl(path);
-                await client.from('graves').insert([{ name: n, photo_url: data.publicUrl }]);
-                alert("已入土安葬"); location.reload();
+                await client.from('graves').insert([{ name: n, photo_url: data.publicUrl, wealth: 0, merit: 0 }]);
+                location.reload();
             };
             f.click();
         }
