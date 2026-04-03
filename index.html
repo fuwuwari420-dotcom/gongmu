@@ -155,19 +155,30 @@
             if (card.classList.contains('is-deleting')) { if (e.target.className !== 'unearth-btn') card.classList.remove('is-deleting'); return; }
             openHall(id, name, url);
         }
+
+        // --- 这里补全了删除成功/失败的反馈逻辑 ---
         async function confirmDelete(e, id, name) {
             e.stopPropagation();
-            if (prompt(`确定要挖坟吗？请输入：\n我确定要把${name}从坟里挖出来`) === `我确定要把${name}从坟里挖出来`) {
-                await client.from('graves').delete().eq('id', id);
-                location.reload();
-            } else { document.getElementById(`card-${id}`).classList.remove('is-deleting'); }
+            const userInput = prompt(`确定要挖坟吗？此操作不可逆。请输入：\n我确定要把${name}从坟里挖出来`);
+            if (userInput === `我确定要把${name}从坟里挖出来`) {
+                const { error } = await client.from('graves').delete().eq('id', id);
+                if (!error) {
+                    alert("已被挫骨扬灰，公墓地皮压力-1");
+                    location.reload();
+                } else {
+                    alert("发生连接错误。");
+                }
+            } else { 
+                alert("挖坟的意志不够坚定！");
+                document.getElementById(`card-${id}`).classList.remove('is-deleting'); 
+            }
         }
 
         // 彩蛋 1：生日检测
         function checkBirthday(name) {
             const now = new Date();
             if (name === "千明" && now.getMonth() === 3 && now.getDate() === 5) {
-                alert("祝你生日快乐！🎂✨");
+                alert("老公生日快乐！🎂✨呃小风风携gmn一起祝福啊不管了反正你乐一下吧没多少功能");
             }
         }
 
