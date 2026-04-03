@@ -3,41 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>赛博互动公墓</title>
+    <title>赛博公墓-最终增强版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: #000; color: #ccc; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
         
-        /* 公墓列表 */
+        /* 首页公墓 */
         #cemetery-view { display: block; padding: 20px; text-align: center; height: 100vh; overflow-y: auto; }
         .grave-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         .grave-card { background: #111; border: 1px solid #333; padding: 10px; border-radius: 5px; }
         .grave-card img { width: 100%; height: 120px; object-fit: cover; filter: grayscale(100%); }
 
-        /* 灵堂视图 */
-        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 40px; height: 100vh; position: relative; }
+        /* 灵堂内部 */
+        #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 20px; height: 100vh; position: relative; }
         
-        /* 遗像区域 */
-        .photo-area { position: relative; width: 220px; height: 280px; }
+        /* 遗像+框 */
+        .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 10px; }
         .user-photo { position: absolute; top: 15%; left: 15%; width: 70%; height: 60%; object-fit: cover; filter: grayscale(100%); z-index: 1; }
         .frame-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
         /* 祭坛布局 */
-        .altar { display: flex; align-items: flex-end; justify-content: center; gap: 10px; margin-top: 30px; }
-        .plate { width: 70px; height: 70px; border-bottom: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 40px; background: rgba(255,255,255,0.05); border-radius: 50%; }
-        #censer-img { width: 120px; height: auto; z-index: 5; }
+        .altar { display: flex; align-items: flex-end; justify-content: center; gap: 10px; width: 100%; }
+        .plate { width: 75px; height: 75px; border-bottom: 2px solid #444; display: flex; align-items: center; justify-content: center; font-size: 45px; background: rgba(255,255,255,0.05); border-radius: 50%; }
+        
+        /* 香炉容器：固定高度防止崩溃 */
+        .censer-container { position: relative; width: 140px; height: 140px; }
+        /* 底座香炉：永远存在 */
+        #censer-base { position: absolute; bottom: 0; left: 0; width: 100%; height: auto; z-index: 10; display: block !important; }
+        /* 点燃的香：叠在底座上面 */
+        #lit-incense-img { position: absolute; bottom: 40px; left: 10%; width: 80%; height: auto; z-index: 11; display: none; pointer-events: none; }
 
-        /* 底部物品栏 */
-        .inventory { position: fixed; bottom: 0; width: 100%; background: #111; padding: 20px 0; display: flex; justify-content: center; gap: 25px; border-top: 1px solid #333; z-index: 100; }
-        .item { font-size: 40px; touch-action: none; cursor: grab; }
-        .incense-stick { width: 50px; height: 50px; object-fit: contain; }
+        /* 底部供品栏 */
+        .inventory { position: fixed; bottom: 0; width: 100%; background: #1a1a1a; padding: 20px 0; display: flex; justify-content: center; align-items: center; gap: 15px; border-top: 2px solid #444; z-index: 100; }
+        
+        /* 这里的香大幅度放大，并增加醒目的黄色边框 */
+        .incense-stick { 
+            width: 140px !important; 
+            height: 140px !important; 
+            object-fit: contain; 
+            padding: 5px; 
+            background: rgba(255,255,0,0.1); 
+            border: 3px solid #ffd700; 
+            border-radius: 15px; 
+            box-shadow: 0 0 15px rgba(255,215,0,0.3);
+        }
+        
+        .emoji-item { font-size: 50px; padding: 10px; border: 1px solid #333; border-radius: 10px; }
 
-        /* 拖拽中的虚影 */
+        /* 拖拽虚影：也要够大 */
         .dragging-ghost {
             position: fixed;
             pointer-events: none;
             z-index: 999;
-            font-size: 50px;
+            width: 150px;
+            height: 150px;
             opacity: 0.8;
             transform: translate(-50%, -50%);
         }
@@ -55,7 +74,7 @@
 
     <div id="hall-view">
         <button class="btn" style="position:fixed; top:10px; left:10px;" onclick="location.reload()">返回</button>
-        <h2 id="display-name">灵位</h2>
+        <h2 id="display-name" style="margin:5px 0;">灵位</h2>
         
         <div class="photo-area">
             <img id="hall-user-img" class="user-photo" src="">
@@ -64,16 +83,23 @@
 
         <div class="altar">
             <div class="plate drop-zone" data-type="plate">🥣</div>
-            <img id="censer-img" class="drop-zone" data-type="censer" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1549.PNG">
+            
+            <div class="censer-container drop-zone" data-type="censer">
+                <img id="censer-base" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1549.PNG">
+                <img id="lit-incense-img" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1551.PNG">
+            </div>
+
             <div class="plate drop-zone" data-type="plate">🥣</div>
         </div>
 
+        <p style="color:#555; font-size:14px; margin-top:10px;">亲手拖动下方的贡品上供</p>
+
         <div class="inventory">
             <img class="drag-item incense-stick" data-kind="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">
-            <div class="drag-item item" data-kind="emoji">🍎</div>
-            <div class="drag-item item" data-kind="emoji">🍗</div>
-            <div class="drag-item item" data-kind="emoji">🚬</div>
-            <div class="drag-item item" data-kind="emoji">🍺</div>
+            <div class="drag-item emoji-item" data-kind="emoji">🍎</div>
+            <div class="drag-item emoji-item" data-kind="emoji">🍗</div>
+            <div class="drag-item emoji-item" data-kind="emoji">🚬</div>
+            <div class="drag-item emoji-item" data-kind="emoji">🍺</div>
         </div>
     </div>
 
@@ -82,7 +108,6 @@
         const SUPABASE_KEY = 'sb_publishable_vrJ1yK1oe8wzdiDsrwIwXg_q4hW2527';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 加载列表
         async function load() {
             const { data } = await client.from('graves').select('*').order('id', {ascending:false});
             const list = document.getElementById('grave-list');
@@ -99,9 +124,11 @@
             document.getElementById('hall-view').style.display = 'flex';
             document.getElementById('display-name').innerText = name;
             document.getElementById('hall-user-img').src = url;
+            // 每次打开重置香的状态
+            document.getElementById('lit-incense-img').style.display = 'none';
         }
 
-        // --- 拖拽交互核心逻辑 (支持手机) ---
+        // 手机端拖拽逻辑
         let currentGhost = null;
         let dragInfo = null;
 
@@ -114,7 +141,6 @@
                 content: el.innerText || el.src
             };
 
-            // 创建跟随手指的虚影
             currentGhost = el.cloneNode(true);
             currentGhost.classList.add('dragging-ghost');
             document.body.appendChild(currentGhost);
@@ -123,7 +149,7 @@
 
         document.addEventListener('touchmove', function(e) {
             if (!currentGhost) return;
-            e.preventDefault(); // 禁止页面滚动
+            e.preventDefault();
             moveGhost(e.touches[0]);
         }, { passive: false });
 
@@ -131,13 +157,13 @@
             if (!currentGhost) return;
 
             const touch = e.changedTouches[0];
-            // 获取手指松开位置下的元素
             const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.drop-zone');
 
             if (dropTarget) {
                 const zoneType = dropTarget.dataset.type;
                 if (zoneType === 'censer' && dragInfo.kind === 'incense') {
-                    dropTarget.src = "https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1551.PNG";
+                    // 只显示点燃的香，绝对不隐藏底座
+                    document.getElementById('lit-incense-img').style.display = 'block';
                 } else if (zoneType === 'plate' && dragInfo.kind === 'emoji') {
                     dropTarget.innerText = dragInfo.content;
                 }
@@ -153,9 +179,8 @@
             currentGhost.style.top = touch.clientY + 'px';
         }
 
-        // 上传功能
         async function startUpload() {
-            const n = prompt("输入受难者姓名：");
+            const n = prompt("受难者姓名：");
             if (!n) return;
             const f = document.createElement('input');
             f.type = 'file'; f.accept = 'image/*';
@@ -165,7 +190,7 @@
                 await client.storage.from('photos').upload(path, file);
                 const { data } = client.storage.from('photos').getPublicUrl(path);
                 await client.from('graves').insert([{ name: n, photo_url: data.publicUrl }]);
-                alert("安葬成功！");
+                alert("已入土安葬");
                 location.reload();
             };
             f.click();
