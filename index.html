@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>赛博公墓-祭坛校对版</title>
+    <title>赛博公墓-祭坛增强版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 背景：极暗低饱和灰蓝 */
+        /* 继承你之前的样式 */
         body { background-color: #0d1117; color: #555; font-family: "STKaiti", "楷体", serif; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
         
         #cemetery-view { display: block; padding: 15px; text-align: center; height: 100vh; overflow-y: auto; }
@@ -16,15 +16,12 @@
 
         #hall-view { display: none; flex-direction: column; align-items: center; padding-top: 20px; height: 100vh; position: relative; }
         
-        /* 遗像区：保持稳定 */
         .photo-area { position: relative; width: 220px; height: 280px; margin-bottom: 20px; }
         .user-photo { position: absolute; top: 15%; left: 15%; width: 70%; height: 60%; object-fit: cover; filter: grayscale(100%); z-index: 1; }
         .frame-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
-        /* 祭坛区域：通过巨大的负 margin 向上提 */
         .altar { display: flex; align-items: flex-end; justify-content: center; width: 100%; margin-top: -65px; z-index: 10; }
         
-        /* 碟子：左右拉近，高度下沉 */
         .plate-container { 
             width: 90px; height: 90px; 
             background: url('https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/1775240868115.png') no-repeat center;
@@ -32,7 +29,7 @@
             display: flex; align-items: center; justify-content: center; 
             font-size: 30px; 
             position: relative;
-            top: 25px; /* 碟子相对于香炉下沉 */
+            top: 25px;
             z-index: 15;
         }
         #plate-l { left: 60px; }
@@ -40,11 +37,9 @@
         
         .plate-content { transform: translateY(-5px); pointer-events: none; }
         
-        /* 香炉：保持大尺寸 */
         .censer-container { position: relative; width: 200px; height: 140px; display: flex; justify-content: center; z-index: 10; }
         #censer-base { position: absolute; bottom: 0; width: 100%; height: auto; z-index: 10; }
         
-        /* 点燃的香：保持 -15px 位置 */
         #lit-incense-img { 
             position: absolute; 
             bottom: -50px; 
@@ -55,7 +50,7 @@
             pointer-events: none; 
         }
 
-        /* 底部物品栏 */
+        /* 底部栏 */
         .inventory { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.4); padding: 10px 0; display: flex; justify-content: center; align-items: center; gap: 20px; border-top: 1px solid #1c2128; z-index: 100; }
         .incense-stick { width: 80px; height: 80px; object-fit: contain; cursor: grab; }
         .emoji-item { font-size: 35px; cursor: grab; padding: 5px; }
@@ -82,7 +77,6 @@
             <img class="frame-photo" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1548.PNG">
         </div>
 
-        <!-- 祭坛部分 -->
         <div class="altar">
             <div id="plate-l" class="plate-container drop-zone" data-type="plate">
                 <span class="plate-content"></span>
@@ -96,12 +90,9 @@
             </div>
         </div>
 
-        <div class="inventory" style="padding-bottom: 25px;">
-            <img class="drag-item incense-stick" data-kind="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">
-            <div class="drag-item emoji-item" data-kind="emoji">🍎</div>
-            <div class="drag-item emoji-item" data-kind="emoji">🍗</div>
-            <div class="drag-item emoji-item" data-kind="emoji">🚬</div>
-            <div class="drag-item emoji-item" data-kind="emoji">🍺</div>
+        <!-- 给 inventory 增加一个 ID，方便用 JS 刷新 -->
+        <div class="inventory" id="inventory-bar" style="padding-bottom: 25px;">
+            <!-- 香是固定的，后面会用 JS 动态生成 4 个随机贡品 -->
         </div>
     </div>
 
@@ -109,6 +100,13 @@
         const SUPABASE_URL = 'https://xtplnnzudkqkkzntqtal.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_vrJ1yK1oe8wzdiDsrwIwXg_q4hW2527';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- 1. 贡品库：你可以无限添加 ---
+        const ALL_GIFTS = [
+            "🍎", "🍗", "🚬", "🍺", "🍦", "🎮", "📱", "🖱️", "🌹", "🕯️", 
+            "🍱", "🍰", "🍵", "🥤", "🍔", "🍕", "🍌", "🍑", "🍄", "🧶",
+            "🎧", "🎬", "🎤", "🎷", "🎻", "🎸", "🎹", "💊", "💸", "🍵"
+        ];
 
         async function load() {
             const { data } = await client.from('graves').select('*').order('id', {ascending:false});
@@ -121,6 +119,7 @@
             `).join('');
         }
 
+        // --- 2. 核心修改：进入灵堂时随机生成贡品 ---
         function openHall(name, url) {
             document.getElementById('cemetery-view').style.display = 'none';
             document.getElementById('hall-view').style.display = 'flex';
@@ -128,11 +127,24 @@
             document.getElementById('hall-user-img').src = url;
             document.getElementById('lit-incense-img').style.display = 'none';
             document.querySelectorAll('.plate-content').forEach(p => p.innerText = "");
+
+            // 生成随机贡品
+            const bar = document.getElementById('inventory-bar');
+            const randomGifts = [...ALL_GIFTS]
+                .sort(() => 0.5 - Math.random()) // 洗牌
+                .slice(0, 4); // 抽 4 个
+
+            // 重新填满底部栏：香永远在第一个
+            bar.innerHTML = `
+                <img class="drag-item incense-stick" data-kind="incense" src="https://xtplnnzudkqkkzntqtal.supabase.co/storage/v1/object/public/photos/IMG_1550.PNG">
+                ${randomGifts.map(emoji => `<div class="drag-item emoji-item" data-kind="emoji">${emoji}</div>`).join('')}
+            `;
         }
 
         let currentGhost = null;
         let dragInfo = null;
 
+        // 使用事件委托，即使 innerHTML 变了，touch 事件依然有效
         document.addEventListener('touchstart', function(e) {
             const el = e.target.closest('.drag-item');
             if (!el) return;
